@@ -1,0 +1,373 @@
+//DESCRIPTION OF THE EMO RECOG MODEL
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 1: Load Dataset
+```
+# Step 1: Load Dataset
+import pandas as pd
+
+# Load your dataset from CSV
+data = pd.read_csv('emo_recog_dataset.csv')
+print("Dataset loaded successfully.")
+```
+
+This section imports the pandas library and loads the dataset from a CSV file named emo_recog_dataset.csv.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 2.1a: Text Processing
+```
+# Step 2.1a: Text Processing
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+import string
+import re
+
+nltk.download('punkt')
+nltk.download('stopwords')
+nltk.download('wordnet')
+
+stop_words = set(stopwords.words('english'))
+lemmatizer = WordNetLemmatizer()
+
+def text_processing(text):
+    text = text.lower()
+    text = re.sub(r'\d+', '', text)
+    text = text.translate(str.maketrans('', '', string.punctuation))
+    tokens = word_tokenize(text)
+    tokens = [word for word in tokens if word not in stop_words]
+    tokens = [lemmatizer.lemmatize(word) for word in tokens]
+    return ' '.join(tokens)
+
+data['processed_text'] = data['sentence'].apply(text_processing)
+print("Text processing completed.")
+```
+
+This section performs text processing:
+- Imports necessary NLTK libraries and other modules.
+- Downloads required NLTK data.
+- Defines a text processing function to lowercase, remove digits, punctuation, stopwords, and lemmatize the text.
+- Applies the text processing function to the dataset.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 2.1b: Upscaling and Downscaling Sampling using Random Resampling
+```
+# Step 2.1b: Upscaling and Downscaling Sampling using Random Resampling
+import pandas as pd
+from sklearn.utils import resample
+
+# Counts of instances for each emotion class
+counts = {
+    'fear': 231,
+    'sadness': 231,
+    'joy': 186,
+    'anger': 103
+}
+
+# Separate data by emotion
+anger = data[data['emotion'] == 'anger']
+joy = data[data['emotion'] == 'joy']
+sadness = data[data['emotion'] == 'sadness']
+fear = data[data['emotion'] == 'fear']
+
+# Determine the majority class size
+majority_class_size = max(counts.values())
+
+# Upsample minority classes to match the majority class size
+anger_upsampled = resample(anger, replace=True, n_samples=majority_class_size, random_state=42)
+joy_upsampled = resample(joy, replace=True, n_samples=majority_class_size, random_state=42)
+sadness_upsampled = resample(sadness, replace=True, n_samples=majority_class_size, random_state=42)
+fear_upsampled = resample(fear, replace=True, n_samples=majority_class_size, random_state=42)
+
+# Combine upsampled data
+data_balanced = pd.concat([joy_upsampled, sadness_upsampled, anger_upsampled, fear_upsampled])
+
+# Reset index
+data_balanced = data_balanced.reset_index(drop=True)
+
+# Optionally, shuffle the data
+data_balanced = data_balanced.sample(frac=1, random_state=42).reset_index(drop=True)
+
+# Display the class distribution
+print(data_balanced['emotion'].value_counts())
+print("Data balancing completed.")
+```
+
+This section balances the dataset using random resampling:
+- Counts the number of instances for each emotion class.
+- Upsamples the minority classes to match the majority class size.
+- Combines the upsampled data and shuffles it.
+- Displays the balanced class distribution.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 2.1c: TF-IDF Vectorization
+```
+# Step 2.1c: TF-IDF Vectorization
+from sklearn.feature_extraction.text import TfidfVectorizer
+
+tfidf = TfidfVectorizer()
+X_tfidf = tfidf.fit_transform(data_balanced['processed_text'])
+print("TF-IDF vectorization completed.")
+```
+
+This section performs TF-IDF vectorization:
+- Imports the TfidfVectorizer from sklearn.
+- Vectorizes the processed text using TF-IDF.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 2.2a: Narrative Structural Feature Analysis
+```
+# Step 2.2a: Narrative Structural Feature Analysis
+feature_keywords = {
+    "Mode": {
+        "joy": ["will", "shall", "can", "could", "may", "might", "would", "wish", "desire", "prefer"],
+        "fear": ["must", "should", "need to", "ought to", "have to", "required", "demand"],
+        "sadness": ["used to", "might", "wished", "desired", "preferred", "longed", "hoped"],
+        "anger": ["must", "demand", "insist", "advise", "urge", "command", "force"]
+    },
+    "Intention": {
+        "joy": ["want", "plan", "aim", "hope", "dream", "aspire", "intend", "expect", "aim for", "strive for"],
+        "fear": ["decide", "determine", "strive", "resolve", "commit", "settle", "aim to", "try to"],
+        "sadness": ["decide", "determine", "strive", "resolve", "commit", "settle", "aim to", "try to"],
+        "anger": ["decide", "plan", "aim", "resolve", "intend", "propose", "purpose"]
+    },
+    "Result": {
+        "joy": ["manage", "achieve", "succeed", "accomplish", "realize", "attain", "gain", "obtain", "acquire"],
+        "fear": ["prevent", "secure", "fulfill", "achieve", "accomplish", "attain", "realize"],
+        "sadness": ["prevent", "secure", "fulfill", "achieve", "accomplish", "attain", "realize"],
+        "anger": ["manage", "achieve", "succeed", "accomplish", "realize", "attain", "gain"]
+    },
+    "Manner": {
+        "joy": ["gently", "gracefully", "smoothly", "efficiently", "easily", "carefully", "skillfully", "effectively"],
+        "fear": ["carefully", "awkwardly", "hastily", "anxiously", "nervously", "tentatively", "hesitantly"],
+        "sadness": ["slowly", "softly", "quietly", "roughly", "gently", "hesitantly", "reluctantly"],
+        "anger": ["firmly", "loudly", "roughly", "harshly", "violently", "aggressively", "forcefully"]
+    },
+    "Aspect": {
+        "joy": ["proceed", "commence", "conclude", "finish", "complete", "fulfill", "close", "wrap up"],
+        "fear": ["halt", "delay", "pause", "restart", "interrupt", "stop", "cease", "break"],
+        "sadness": ["cease", "terminate", "delay", "postpone", "suspend", "discontinue"],
+        "anger": ["start", "begin", "proceed", "resume", "continue", "restart", "carry on"]
+    },
+    "Status": {
+        "joy": ["none", "nobody", "nothing", "void", "null", "zero", "absent"],
+        "fear": ["nowhere", "noway", "void of", "devoid", "lack", "absence", "empty"],
+        "sadness": ["not", "never", "absent", "lacking", "missing", "void", "devoid"],
+        "anger": ["none", "nobody", "nothing", "void", "null", "zero", "absent"]
+    },
+    "Appearance": {
+        "joy": ["imagine", "perceive", "evidence", "indication", "sign", "hint", "clue", "signal"],
+        "fear": ["bewilder", "pretend", "feign", "simulate", "fake", "counterfeit", "fabricate"],
+        "sadness": ["seem", "appear", "look like", "feign", "pretend", "simulate", "mock"],
+        "anger": ["bewilder", "pretend", "feign", "simulate", "fake", "counterfeit", "fabricate"]
+    },
+    "Knowledge": {
+        "joy": ["understand", "comprehend", "realize", "perceive", "grasp", "know", "learn", "cognize", "apprehend"],
+        "fear": ["contrive", "discern", "observe", "sense", "detect", "recognize", "identify", "acknowledge"],
+        "sadness": ["feel", "know", "recognize", "acknowledge", "perceive", "understand", "realize", "comprehend"],
+        "anger": ["comprehend", "realize", "perceive", "grasp", "know", "understand", "acknowledge"]
+    },
+    "Description": {
+        "joy": ["describe", "illustrate", "portray", "represent", "depict", "characterize", "outline", "detail"],
+        "fear": ["explain", "narrate", "outline", "sketch", "describe", "depict", "characterize", "represent"],
+        "sadness": ["call", "chat", "relate", "depict", "portray", "describe", "outline", "depict"],
+        "anger": ["describe", "narrate", "depict", "portray", "represent", "outline", "detail"]
+    },
+    "Supposition": {
+        "joy": ["anticipate", "expect", "presume", "imagine", "assume", "suppose", "think", "believe"],
+        "fear": ["expect", "forecast", "predict", "speculate", "assume", "presume", "surmise", "guess"],
+        "sadness": ["assume", "presume", "surmise", "guess", "speculate", "suppose", "suspect", "think"],
+        "anger": ["anticipate", "assume", "presume", "speculate", "suppose", "conjecture", "infer", "surmise"]
+    },
+    "Subjectivation": {
+        "joy": ["consider", "reflect", "ponder", "contemplate", "meditate", "ruminate", "muse", "deliberate"],
+        "fear": ["doubt", "think", "ruminate", "deliberate", "meditate", "wonder", "ponder", "reflect"],
+        "sadness": ["remember", "reflect", "ponder", "brood", "dwell on", "meditate", "contemplate", "ruminate"],
+        "anger": ["doubt", "think", "reflect", "ponder", "contemplate", "meditate", "ruminate", "muse"]
+    },
+    "Attitude": {
+        "joy": ["enjoy", "delight", "appreciate", "cherish", "love", "admire", "adore", "treasure"],
+        "fear": ["wonder", "fear", "dislike", "hate", "loathe", "detest", "despise", "abhor"],
+        "sadness": ["sad", "melancholy", "depressed", "despondent", "gloomy", "downhearted", "heartbroken", "mournful"],
+        "anger": ["anger", "dislike", "hate", "furious", "irate", "enraged", "livid", "infuriated"]
+    },
+    "Comparative": {
+        "joy": ["happier", "better", "superior", "equal", "worse", "inferior", "lesser", "greater"],
+        "fear": ["less", "fewer", "inferior", "unequal", "more", "greater", "better", "worse"],
+        "sadness": ["less", "fewer", "inferior", "unequal", "more", "greater", "better", "worse"],
+        "anger": ["less", "inferior", "unequal", "parallel", "similar", "alike", "same", "different"]
+    },
+    "Quantifier": {
+        "joy": ["all", "enough", "many", "most", "few", "some", "any", "none", "every", "several"],
+        "fear": ["some", "few", "any", "none", "all", "every", "most", "many", "several", "fewer"],
+        "sadness": ["some", "few", "any", "none", "all", "every", "most", "many", "several", "fewer"],
+        "anger": ["some", "few", "any", "none", "all", "every", "most", "many", "several", "fewer"]
+    },
+    "Qualification": {
+        "joy": ["happy", "joyful", "ecstatic", "gleeful", "elated", "overjoyed", "blissful", "content"],
+        "fear": ["sad", "miserable", "depressed", "despondent", "gloomy", "downhearted", "dismal", "forlorn"],
+        "sadness": ["sad", "melancholy", "depressed", "despondent", "gloomy", "downhearted", "dismal", "forlorn"],
+        "anger": ["angry", "irate", "furious", "raging", "outraged", "infuriated", "provoked", "incensed"]
+    },
+    "Explanation": {
+        "joy": ["because", "therefore", "thus", "hence", "so", "consequently", "accordingly", "as a result"],
+        "fear": ["so", "consequently", "thanks to", "therefore", "thus", "accordingly", "as a result", "because of"],
+        "sadness": ["because", "thus", "due to", "therefore", "consequently", "owing to", "as a result", "as a consequence"],
+        "anger": ["because", "therefore", "thus", "owing to", "so", "consequently", "as a result", "due to"]
+    }
+}
+print("Feature keywords defined.")
+
+# Step 2.2b: Extracting the features
+def extract_features(text):
+    features = {}
+    for feature, emotions in feature_keywords.items():
+        for emotion, keywords in emotions.items():
+            for keyword in keywords:
+                if keyword in text:
+                    features[f'{feature}_{emotion}'] = 1
+                else:
+                    features[f'{feature}_{emotion}'] = 0
+    return features
+
+narrative_features = data_balanced['processed_text'].apply(lambda x: pd.Series(extract_features(x)))
+print("Narrative structural features extracted.")
+```
+
+This section extracts narrative structural features:
+- Defines a dictionary of keywords associated with various narrative features and emotions.
+- Defines a function to extract these features from text.
+- Applies the feature extraction function to the dataset and stores the results in a DataFrame.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 2.2b: Combine Features
+```
+# Combine TF-IDF and narrative structural features
+import scipy.sparse as sp
+
+X_combined = sp.hstack([X_tfidf, sp.csr_matrix(narrative_features.values)])
+print("Combined feature set created.")
+```
+
+This section combines TF-IDF features and narrative structural features:
+- Imports the scipy.sparse module.
+- Combines the TF-IDF matrix and the narrative features matrix into a single feature set.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 3: Train-Test Split
+```
+# Step 3: Train-Test Split
+from sklearn.model_selection import train_test_split
+
+y = data_balanced['emotion']
+X_train, X_test, y_train, y_test = train_test_split(X_combined, y, test_size=0.2, random_state=42)
+print("Train-test split completed.")
+```
+
+This section splits the data into training and testing sets:
+- Imports the train_test_split function from sklearn.
+- Splits the combined features and labels into training and testing sets with an 80-20 split.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 4: Model Training and Evaluation
+```
+# Step 4: Model Training and Testing
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Train a logistic regression model
+model = LogisticRegression(max_iter=1000)
+model.fit(X_train, y_train)
+print("Model training completed.")
+
+# Make predictions on the test set
+y_pred = model.predict(X_test)
+
+# Calculate and display performance metrics
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy:.4f}")
+print("Classification Report:")
+print(classification_report(y_test, y_pred))
+print("Confusion Matrix:")
+print(confusion_matrix(y_test, y_pred))
+```
+
+This section trains and evaluates a logistic regression model:
+- Imports the LogisticRegression, accuracy_score, classification_report, and confusion_matrix functions from sklearn.
+- Trains a logistic regression model on the training set.
+- Makes predictions on the test set.
+- Calculates the accuracy, classification report, and confusion matrix.
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+Step 5: Tkinter GUI for Results Display
+```
+#Step 5: Tkinter GUI for Results Display
+import tkinter as tk
+from tkinter import ttk, scrolledtext
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import seaborn as sns
+
+# Function to display the confusion matrix in a separate window
+def show_confusion_matrix():
+    cm_window = tk.Toplevel(root)
+    cm_window.title("Confusion Matrix")
+    
+    fig, ax = plt.subplots(figsize=(8, 6))
+    sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax)
+    ax.set_xlabel('Predicted Labels')
+    ax.set_ylabel('True Labels')
+    ax.set_title('Confusion Matrix')
+    
+    canvas = FigureCanvasTkAgg(fig, master=cm_window)
+    canvas.draw()
+    canvas.get_tk_widget().pack()
+
+# Function to display the results in the main window
+def display_results():
+    # Clear previous results
+    for widget in result_frame.winfo_children():
+        widget.destroy()
+    
+    # Display accuracy
+    accuracy_label = ttk.Label(result_frame, text=f"Accuracy: {accuracy:.4f}", font=("Helvetica", 12))
+    accuracy_label.pack(pady=5)
+
+    # Display classification report in a table
+    report = classification_report(y_test, y_pred, output_dict=True)
+    report_frame = ttk.Frame(result_frame)
+    report_frame.pack(pady=5)
+    
+    # Create table headers
+    headers = ["Class"] + list(report['macro avg'].keys())
+    for col_num, header in enumerate(headers):
+        header_label = ttk.Label(report_frame, text=header, font=("Helvetica", 10, 'bold'))
+        header_label.grid(row=0, column=col_num, padx=5, pady=5)
+    
+    # Fill table with classification report data
+    for row_num, (label, metrics) in enumerate(report.items()):
+        if label == 'accuracy':
+            continue
+        label_cell = ttk.Label(report_frame, text=label, font=("Helvetica", 10))
+        label_cell.grid(row=row_num+1, column=0, padx=5, pady=5)
+        for col_num, (metric, value) in enumerate(metrics.items()):
+            metric_cell = ttk.Label(report_frame, text=f"{value:.2f}", font=("Helvetica", 10))
+            metric_cell.grid(row=row_num+1, column=col_num+1, padx=5, pady=5)
+    
+    # Button to show confusion matrix
+    cm_button = ttk.Button(result_frame, text="Show Confusion Matrix", command=show_confusion_matrix)
+    cm_button.pack(pady=10)
+
+# Create the main window
+root = tk.Tk()
+root.title("Model Evaluation Results")
+
+# Create a frame for results
+result_frame = ttk.Frame(root, padding="10")
+result_frame.pack(fill=tk.BOTH, expand=True)
+
+# Add a button to display results
+display_button = ttk.Button(root, text="Display Results", command=display_results)
+display_button.pack(pady=10)
+
+# Start the GUI event loop
+root.mainloop()
+```
+
+This section creates a Tkinter GUI to display the model evaluation results:
+- Imports tkinter and scrolledtext modules.
+- Defines a function to create a Tkinter window and display the accuracy, classification report, and confusion matrix.
+- Calls the function to display the results.
