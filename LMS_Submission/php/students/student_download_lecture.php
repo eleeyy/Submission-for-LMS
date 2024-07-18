@@ -1,16 +1,21 @@
 <?php
-$db_host = "localhost";
-$db_user = "root";
-$db_pass = "";
-$db_name = "pup_lms";
+session_start(); // Start session to store user ID
+
+$servername = "localhost";
+$username = "root";
+$password = "";
+$dbname = "pup_lms";
 
 // Create connection
-$conn = new mysqli($db_host, $db_user, $db_pass, $db_name);
+$conn = new mysqli($servername, $username, $password, $dbname);
 
 // Check connection
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
+
+// Retrieve user ID from session or query string (for example, after login)
+$userID = isset($_SESSION['userID']) ? $_SESSION['userID'] : (isset($_GET['userID']) ? $_GET['userID'] : '');
 
 // Get the lecture_ID from the URL
 $lecture_ID = isset($_GET['lecture_ID']) ? $_GET['lecture_ID'] : '';

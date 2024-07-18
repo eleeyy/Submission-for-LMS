@@ -13,7 +13,7 @@ if ($conn->connect_error) {
 }
 
 // Fetch lectures with subject_ID 'kung ano subject id'
-$subject_ID = 'webdev'; // mapapalitan to
+$subject_ID = 'ABCDE12345'; // mapapalitan to
 $stmt = $conn->prepare("SELECT lecture_ID, name, date FROM UPLOAD_LECTURE WHERE subject_ID = ?");
 $stmt->bind_param("s", $subject_ID);
 $stmt->execute();
