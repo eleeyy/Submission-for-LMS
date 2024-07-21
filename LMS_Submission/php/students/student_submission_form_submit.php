@@ -21,12 +21,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $currentDate = date('Y-m-d'); // Current date in YYYY-MM-DD format
     $currentTime = date('H:i:s'); // Current time in HH:MM:SS format
 
-    $target_dir = "uploads/";
+    $target_dir = "../uploads/";
     $target_file = $target_dir . basename($_FILES["submittedFile"]["name"]);
     $uploadOk = 1;
     $fileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
 
-    $valid_types = array("jpg", "jpeg", "png", "gif", "pdf", "pptx", "txt", "docx", "doc");
+    $valid_types = array("jpg", "jpeg", "png", "gif", "pdf", "pptx", "txt", "docx", "doc", "mp4", "mp3");
 
     // Add a JavaScript file to the page to ensure the functions are available
     echo "<script src='../../js/students/student_submission_form.js'></script>";

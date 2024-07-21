@@ -54,7 +54,7 @@
 
         // Validate and process file upload
         if (isset($_FILES['file_path']) && $_FILES['file_path']['error'] == UPLOAD_ERR_OK) {
-            $target_dir = "uploads/"; // Directory where files will be stored
+            $target_dir = "../uploads/"; // Directory where files will be stored
             $target_file = $target_dir . basename($_FILES["file_path"]["name"]);
             $file_type = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
 
